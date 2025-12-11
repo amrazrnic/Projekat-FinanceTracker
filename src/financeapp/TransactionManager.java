@@ -20,13 +20,9 @@ public class TransactionManager {
             throw new IllegalStateException("MongoDB collection 'transactions' is null!");
         }
     }
-
-    // Snimi transakciju u bazu
     public void addTransaction(Transaction t) {
         collection.insertOne(t.toDocument());
     }
-
-    // Vrati sve transakcije
     public ArrayList<Transaction> getAllTransactions() {
 
         ArrayList<Transaction> list = new ArrayList<>();
@@ -35,20 +31,9 @@ public class TransactionManager {
         while (cursor.hasNext()) {
 
             Document d = cursor.next();
-
-            // Vrsta
-            String type = d.getString("type");
-            if (type == null) type = d.getString("Vrsta");
-
-            // Iznos
-            Double amount = d.getDouble("amount");
-            if (amount == null) amount = d.getDouble("Iznos");
-
-            // Opis
-            String description = d.getString("description");
-            if (description == null) description = d.getString("Opis");
-
-            // ID — najvažnije!
+            String type = d.getString("Vrsta");
+            Double amount = d.getDouble("Iznos");
+            String description = d.getString("Opis");
             Object idObj = d.get("_id");
             String id = idObj != null ? idObj.toString() : null;
 
@@ -58,8 +43,6 @@ public class TransactionManager {
         }
         return list;
     }
-
-        // Ukupni prihodi
     public double getTotalIncome() {
         double total = 0;
         for (Transaction t : getAllTransactions()) {
@@ -69,8 +52,6 @@ public class TransactionManager {
         }
         return total;
     }
-
-    // Ukupni rashodi
     public double getTotalExpense() {
         double total = 0;
         for (Transaction t : getAllTransactions()) {
@@ -80,8 +61,6 @@ public class TransactionManager {
         }
         return total;
     }
-
-    // Ažuriranje transakcije po ID-u
     public void updateTransaction(Transaction t) {
         collection.updateOne(
                 new Document("_id", new ObjectId(t.getId())),
@@ -92,8 +71,6 @@ public class TransactionManager {
                 )
         );
     }
-
-    // Brisanje transakcije po ID-u
     public void deleteTransaction(String id) {
         collection.deleteOne(new Document("_id", new ObjectId(id)));
     }

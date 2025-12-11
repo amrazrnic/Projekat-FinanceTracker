@@ -3,7 +3,6 @@ package financeapp;
 import org.bson.Document;
 import org.bson.types.ObjectId;
 
-
 public class Transaction {
     private String type;
     private double amount;
@@ -17,21 +16,13 @@ public class Transaction {
     }
 
 
-
-
     public Transaction(String type, double amount, String description) {
         this.type = type;
         this.amount = amount;
         this.description = description;
     }
-    public Transaction(ObjectId id, String type, double amount, String description) {
-        this.id = id.toHexString();
-        this.type = type;
-        this.amount = amount;
-        this.description = description;
-    }
 
-    // Konvertiraj Java objekt u MongoDB dokument
+
     public Document toDocument() {
         return new Document("Vrsta", type)
                 .append("Iznos", amount)

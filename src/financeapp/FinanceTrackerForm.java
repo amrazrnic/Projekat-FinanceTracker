@@ -16,6 +16,7 @@ public class FinanceTrackerForm {
     private JLabel text2;
     private JButton updateButton;
     private JButton deleteButton;
+    private JButton exportButton;
     private JLabel naslov;
     private TransactionManager manager;
     private String selectedId = null;
@@ -23,15 +24,33 @@ public class FinanceTrackerForm {
 
     public FinanceTrackerForm() {
         manager = new TransactionManager();
+        typeCombo.removeAllItems();
+        typeCombo.addItem("Prihod");
+        typeCombo.addItem("Rashod");
+        typeCombo.addItem("Hrana");
+        typeCombo.addItem("Racuni");
+        typeCombo.addItem("Zabava");
+        typeCombo.addItem("Prijevoz");
+        typeCombo.addItem("Ostalo");
+
         transactionTable.getSelectionModel().addListSelectionListener(e -> {
-            int row = transactionTable.getSelectedRow();
-            if (row >= 0) {
-                selectedId = (String) transactionTable.getValueAt(row, 0); // pretpostavljamo da je ID prva kolona
-                typeCombo.setSelectedItem(transactionTable.getValueAt(row, 1));
-                amountField.setText(transactionTable.getValueAt(row, 2).toString());
-                descriptionField.setText((String) transactionTable.getValueAt(row, 3));
+            if (!e.getValueIsAdjusting()) {
+                int row = transactionTable.getSelectedRow();
+                if (row >= 0) {
+
+                    ArrayList<Transaction> list = manager.getAllTransactions();
+                    Transaction t = list.get(row);
+
+                    selectedId = t.getId();
+
+                    typeCombo.setSelectedItem(t.getType());
+                    amountField.setText(String.valueOf(t.getAmount()));
+                    descriptionField.setText(t.getDescription());
+                }
             }
         });
+
+        exportButton.addActionListener(e -> exportData());
         deleteButton.addActionListener(e -> {
             int row = transactionTable.getSelectedRow();
             if (row < 0) {
@@ -39,7 +58,6 @@ public class FinanceTrackerForm {
                 return;
             }
 
-            // Dijaloški prozor za potvrdu
             int confirm = JOptionPane.showConfirmDialog(
                     null,
                     "Jeste li sigurni da želite izbrisati ovu transakciju?",
@@ -48,13 +66,19 @@ public class FinanceTrackerForm {
             );
 
             if (confirm == JOptionPane.YES_OPTION) {
-                String id = (String) transactionTable.getValueAt(row, 0); // ID iz prve kolone
-                manager.deleteTransaction(id);  // briše zapis iz MongoDB
-                loadDataIntoTable();             // osvježi tabelu
-                updateSummary();                 // osvježi sažetak
+
+                ArrayList<Transaction> list = manager.getAllTransactions();
+                Transaction selected = list.get(row);
+
+                manager.deleteTransaction(selected.getId());
+
+                loadDataIntoTable();
+                updateSummary();
+
                 JOptionPane.showMessageDialog(null, "Transakcija izbrisana!");
             }
         });
+
 
         updateButton.addActionListener(e -> {
             if (selectedId == null) {
@@ -74,8 +98,8 @@ public class FinanceTrackerForm {
                 Transaction updated = new Transaction(selectedId, type, amount, description);
                 manager.updateTransaction(updated);
 
-                loadDataIntoTable(); // refresh tabele
-                updateSummary();     // refresh sažetka
+                loadDataIntoTable();
+                updateSummary();
 
                 amountField.setText("");
                 descriptionField.setText("");
@@ -85,7 +109,6 @@ public class FinanceTrackerForm {
                 JOptionPane.showMessageDialog(null, "Iznos mora biti broj!");
             }
         });
-
 
         loadDataIntoTable();
         updateSummary();
@@ -112,24 +135,19 @@ public class FinanceTrackerForm {
         });
     }
 
-
     private void loadDataIntoTable() {
         ArrayList<Transaction> list = manager.getAllTransactions();
         DefaultTableModel model = new DefaultTableModel();
 
-        // Dodaj kolone, uključujući ID
-        model.addColumn("ID");
         model.addColumn("Vrsta");
         model.addColumn("Iznos");
         model.addColumn("Opis");
 
-        // Popuni tabelu sa podacima iz liste
         for (Transaction t : list) {
-            model.addRow(new Object[]{
-                    t.getId(),        // ID kolona
-                    t.getType(),      // Vrsta
-                    t.getAmount(),    // Iznos
-                    t.getDescription()// Opis
+            model.addRow(new Object[] {
+                    t.getType(),
+                    t.getAmount(),
+                    t.getDescription()
             });
         }
 
@@ -148,4 +166,46 @@ public class FinanceTrackerForm {
     public JPanel getMainPanel() {
         return mainPanel;
     }
+    private void exportData() {
+        try {
+            String filePath = System.getProperty("user.home") + "/Desktop/finansije_export.txt";
+
+            double income = manager.getTotalIncome();
+            double expense = manager.getTotalExpense();
+            double balance = income - expense;
+
+            ArrayList<Transaction> list = manager.getAllTransactions();
+            java.util.HashMap<String, Double> categoryTotals = new java.util.HashMap<>();
+
+            for (Transaction t : list) {
+                String type = t.getType();
+                double amount = t.getAmount();
+
+                if (!type.equals("Prihod")) {
+                    categoryTotals.put(type, categoryTotals.getOrDefault(type, 0.0) + amount);
+                }
+            }
+
+            java.io.PrintWriter writer = new java.io.PrintWriter(filePath);
+
+            writer.println("Ukupni prihod: " + income);
+            writer.println("Ukupni rashod: " + expense);
+            writer.println("Stanje: " + balance);
+            writer.println();
+            writer.println("Rashodi po kategorijama:");
+
+            for (String category : categoryTotals.keySet()) {
+                writer.println(category + ": " + categoryTotals.get(category));
+            }
+
+            writer.close();
+
+            JOptionPane.showMessageDialog(null,
+                    "Podaci uspješno eksportovani!\nLokacija: Desktop -> finansije_export.txt");
+
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(null, "Greška prilikom eksportovanja: " + ex.getMessage());
+        }
+    }
+
 }
