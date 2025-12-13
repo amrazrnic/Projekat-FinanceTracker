@@ -32,13 +32,15 @@ public class TransactionManager {
 
             Document d = cursor.next();
             String type = d.getString("Vrsta");
+            String category = d.getString("Kategorija");
             Double amount = d.getDouble("Iznos");
             String description = d.getString("Opis");
-            Object idObj = d.get("_id");
-            String id = idObj != null ? idObj.toString() : null;
+            ObjectId oid = d.getObjectId("_id");
+            String id = (oid != null) ? oid.toHexString() : null;
+
 
             if (type != null && amount != null && description != null) {
-                list.add(new Transaction(id, type, amount, description));
+                list.add(new Transaction(id, type, category, amount, description));
             }
         }
         return list;
